@@ -1,0 +1,15 @@
+CLAUDE.md
+
+.env
+*.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Flutter
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
