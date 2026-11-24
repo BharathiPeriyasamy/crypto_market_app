@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'core/theme/app_theme.dart';
 import 'providers/crypto_provider.dart';
-import 'screens/home/home_screen.dart';
+import 'screens/splash/splash_screen.dart';
 import 'services/crypto_api_service.dart';
 
 void main() {
@@ -21,9 +21,10 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Crypto Research',
+      debugShowCheckedModeBanner: false,
+      title: 'Coinora',
       theme: appTheme,
-      home: const HomeScreen(),
+      home: const SplashScreen(),
     );
   }
 }

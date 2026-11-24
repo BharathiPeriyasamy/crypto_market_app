@@ -13,8 +13,8 @@ class Coin {
   final double circulatingSupply;
   final double? totalSupply;
   final double? maxSupply;
-  final double ath;
-  final double atl;
+  final double allTimeHigh;
+  final double allTimeLow;
   final String description;
 
   const Coin({
@@ -32,8 +32,8 @@ class Coin {
     required this.circulatingSupply,
     this.totalSupply,
     this.maxSupply,
-    required this.ath,
-    required this.atl,
+    required this.allTimeHigh,
+    required this.allTimeLow,
     required this.description,
   });
 }

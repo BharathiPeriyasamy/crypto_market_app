@@ -30,8 +30,10 @@ class MarketScreen extends StatelessWidget {
             'Markets': stats.markets.toString(),
           }),
           _SectionTitle('Top Gainers'),
+          const CoinTableHeader(),
           for (final coin in crypto.topGainers) CoinCard(coin: coin),
           _SectionTitle('Top Losers'),
+          const CoinTableHeader(),
           for (final coin in crypto.topLosers) CoinCard(coin: coin),
         ],
       ),
@@ -46,25 +48,39 @@ class _MarketCapCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.all(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Global Market Cap', style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 4),
-            Text(
-              formatMoney(stats.totalMarketCap),
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            Text(
-              '${formatPercent(stats.marketCapChange24h)} (24h)',
-              style: TextStyle(color: changeColor(stats.marketCapChange24h)),
-            ),
-          ],
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+        gradient: const LinearGradient(
+          colors: [deepGreen, darkGreen],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Global Market Cap', style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 6),
+          Text(
+            formatMoney(stats.totalMarketCap),
+            style: Theme.of(context)
+                .textTheme
+                .headlineMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              ChangeBadge(change: stats.marketCapChange24h),
+              const SizedBox(width: 8),
+              Text('24h', style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ],
       ),
     );
   }

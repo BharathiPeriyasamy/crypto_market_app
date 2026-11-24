@@ -49,8 +49,7 @@ class CryptoProvider extends ChangeNotifier {
       final matchesFilter = switch (filter) {
         CoinFilter.all => true,
         CoinFilter.gainers => coin.change24h > 0,
-        CoinFilter.losers => coin.change24h < 0,
-      };
+        CoinFilter.losers => coin.change24h < 0,      };
       return matchesSearch && matchesFilter;
     }).toList();
     result.sort((a, b) => ascending ? _compare(a, b) : _compare(b, a));
@@ -81,14 +80,9 @@ class CryptoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Picking the same option again reverses the order
-  void setSort(SortOption option) {
-    if (option == sortBy) {
-      ascending = !ascending;
-    } else {
-      sortBy = option;
-      ascending = option == SortOption.name;
-    }
+  void setSort(SortOption option, bool isAscending) {
+    sortBy = option;
+    ascending = isAscending;
     notifyListeners();
   }
 

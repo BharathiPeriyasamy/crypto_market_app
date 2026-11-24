@@ -29,6 +29,7 @@ class _CoinSearchBarState extends State<CoinSearchBar> {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: TextField(
         controller: _controller,
+        autofocus: true,
         onChanged: (value) {
           widget.onChanged(value);
           setState(() {});
@@ -39,11 +40,6 @@ class _CoinSearchBarState extends State<CoinSearchBar> {
           suffixIcon: _controller.text.isEmpty
               ? null
               : IconButton(icon: const Icon(Icons.clear), onPressed: _clear),
-          filled: true,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
         ),
       ),
     );

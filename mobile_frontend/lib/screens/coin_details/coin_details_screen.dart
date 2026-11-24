@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../models/coin_model.dart';
 import '../../providers/crypto_provider.dart';
 import '../../widgets/coin_card.dart';
 import '../../widgets/price_chart.dart';
+import '../../widgets/skeleton.dart';
 import '../../widgets/stat_grid.dart';
 import '../../widgets/state_message.dart';
 
@@ -84,16 +84,23 @@ class _CoinDetailsScreenState extends State<CoinDetailsScreen> {
               children: [
                 Text(
                   formatPrice(coin.currentPrice),
-                  style: Theme.of(context).textTheme.headlineMedium,
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                Text(
-                  '${formatPercent(coin.change24h)} (24h)',
-                  style: TextStyle(color: changeColor(coin.change24h)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    ChangeBadge(change: coin.change24h),
+                    const SizedBox(width: 8),
+                    Text('24h', style: Theme.of(context).textTheme.bodySmall),
+                  ],
                 ),
               ],
             ),
           ),
-          Text('Rank #${coin.rank}'),
+          Chip(label: Text('Rank #${coin.rank}')),
         ],
       ),
     );
@@ -119,9 +126,9 @@ class _CoinDetailsScreenState extends State<CoinDetailsScreen> {
       future: _chart,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const SizedBox(
-            height: 240,
-            child: Center(child: CircularProgressIndicator()),
+          return const Padding(
+            padding: EdgeInsets.fromLTRB(12, 8, 12, 8),
+            child: Skeleton(child: SkeletonBox(height: 224, radius: 12)),
           );
         }
         if (snapshot.hasError) {
@@ -158,8 +165,8 @@ class _CoinDetailsScreenState extends State<CoinDetailsScreen> {
       'Circulating Supply': formatCompact(coin.circulatingSupply),
       'Total Supply': _supplyText(coin.totalSupply),
       'Max Supply': _supplyText(coin.maxSupply),
-      'All-Time High': formatPrice(coin.ath),
-      'All-Time Low': formatPrice(coin.atl),
+      'All-Time High': formatPrice(coin.allTimeHigh),
+      'All-Time Low': formatPrice(coin.allTimeLow),
     };
   }
 

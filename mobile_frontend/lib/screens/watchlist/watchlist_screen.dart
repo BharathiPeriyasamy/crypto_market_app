@@ -18,7 +18,10 @@ class WatchlistScreen extends StatelessWidget {
       );
     }
     return ListView(
-      children: [for (final coin in coins) CoinCard(coin: coin)],
+      children: [
+        const CoinTableHeader(),
+        for (final coin in coins) CoinCard(coin: coin),
+      ],
     );
   }
 }
