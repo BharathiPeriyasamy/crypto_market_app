@@ -6,8 +6,10 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/format.dart';
 import '../../models/coin_model.dart';
 import '../../providers/crypto_provider.dart';
+import '../../widgets/app_navigation_bar.dart';
 import '../../widgets/coin_card.dart';
 import '../../widgets/search_bar.dart';
+import '../../widgets/skeleton.dart';
 import '../../widgets/state_message.dart';
 import '../market/market_screen.dart';
 import '../watchlist/watchlist_screen.dart';
@@ -15,13 +17,31 @@ import '../watchlist/watchlist_screen.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
+  // Shared so other screens (like coin details) can switch the visible tab
+  static final selectedTab = ValueNotifier(0);
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _tabIndex = 0;
   bool _isSearching = false;
+
+  int get _tabIndex => HomeScreen.selectedTab.value;
+
+  void _onTabChanged() => setState(() {});
+
+  @override
+  void initState() {
+    super.initState();
+    HomeScreen.selectedTab.addListener(_onTabChanged);
+  }
+
+  @override
+  void dispose() {
+    HomeScreen.selectedTab.removeListener(_onTabChanged);
+    super.dispose();
+  }
 
   // Closing the search bar also clears the search text
   void _toggleSearch() {
@@ -31,21 +51,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(
-          'assets/images/Arc.png',
-          fit: BoxFit.cover,
-          alignment: Alignment.topRight,
-        ),
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: _buildAppBar(),
-          body: _buildBody(context.watch<CryptoProvider>()),
-          bottomNavigationBar: _buildNavigationBar(),
-        ),
-      ],
+    // Back from Market/Watchlist returns to the Coins tab instead of exiting
+    return PopScope(
+      canPop: _tabIndex == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) HomeScreen.selectedTab.value = 0;
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/Arc.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.topRight,
+          ),
+          Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: _buildAppBar(),
+            body: _buildBody(context.watch<CryptoProvider>()),
+            bottomNavigationBar: _buildNavigationBar(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -83,54 +110,40 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Floating rounded bar; the outer SafeArea replaces the bar's own insets
   Widget _buildNavigationBar() {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: darkGreen.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: borderColor),
-          ),
-          child: MediaQuery.removePadding(
-            context: context,
-            removeTop: true,
-            removeBottom: true,
-            child: NavigationBar(
-              selectedIndex: _tabIndex,
-              onDestinationSelected: (index) =>
-                  setState(() => _tabIndex = index),
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.currency_bitcoin_outlined),
-                  selectedIcon: Icon(Icons.currency_bitcoin),
-                  label: 'Coins',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.bar_chart_outlined),
-                  selectedIcon: Icon(Icons.bar_chart),
-                  label: 'Market',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.star_border),
-                  selectedIcon: Icon(Icons.star),
-                  label: 'Watchlist',
-                ),
-              ],
-            ),
-          ),
+    return AppNavigationBar(
+      selectedIndex: _tabIndex,
+      onSelected: (index) => HomeScreen.selectedTab.value = index,
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.currency_bitcoin_outlined),
+          selectedIcon: Icon(Icons.currency_bitcoin),
+          label: 'Coins',
         ),
-      ),
+        NavigationDestination(
+          icon: Icon(Icons.bar_chart_outlined),
+          selectedIcon: Icon(Icons.bar_chart),
+          label: 'Market',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.star_border),
+          selectedIcon: Icon(Icons.star),
+          label: 'Watchlist',
+        ),
+      ],
     );
   }
 
   Widget _buildBody(CryptoProvider crypto) {
     switch (crypto.status) {
       case LoadStatus.loading:
-        return const CoinListSkeleton();
+        if (_tabIndex != 0) return const CoinListSkeleton();
+        return const Column(
+          children: [
+            _SummaryCardsSkeleton(),
+            Expanded(child: CoinListSkeleton()),
+          ],
+        );
       case LoadStatus.error:
         return StateMessage(
           icon: Icons.cloud_off,
@@ -242,15 +255,7 @@ class _SummaryCard extends StatelessWidget {
     final change = this.change;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor),
-        gradient: const LinearGradient(
-          colors: [deepGreen, darkGreen],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
+      decoration: _summaryCardDecoration,
       child: Stack(
         children: [
           Column(
@@ -296,6 +301,61 @@ class _SummaryCard extends StatelessWidget {
           ),
           Positioned(right: 0, bottom: 0, child: graphic),
         ],
+      ),
+    );
+  }
+}
+
+final _summaryCardDecoration = BoxDecoration(
+  borderRadius: BorderRadius.circular(24),
+  border: Border.all(color: borderColor),
+  gradient: const LinearGradient(
+    colors: [deepGreen, darkGreen],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  ),
+);
+
+// Placeholder for the two summary cards, sized to match the real ones
+class _SummaryCardsSkeleton extends StatelessWidget {
+  const _SummaryCardsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final card = Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _summaryCardDecoration,
+      child: const Stack(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SkeletonBox(width: 90, height: 12),
+              SizedBox(height: 14),
+              SkeletonBox(width: 100, height: 26),
+              SizedBox(height: 12),
+              SkeletonBox(width: 56, height: 14),
+            ],
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: SkeletonBox(width: 64, height: 36),
+          ),
+        ],
+      ),
+    );
+
+    return Skeleton(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: Row(
+          children: [
+            Expanded(child: card),
+            const SizedBox(width: 12),
+            Expanded(child: card),
+          ],
+        ),
       ),
     );
   }

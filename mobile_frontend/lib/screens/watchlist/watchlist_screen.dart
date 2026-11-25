@@ -14,13 +14,15 @@ class WatchlistScreen extends StatelessWidget {
     if (coins.isEmpty) {
       return const StateMessage(
         icon: Icons.star_border,
-        message: 'Your watchlist is empty.\nTap the star on a coin to add it.',
+        message: 'Your watchlist is empty.\n'
+            'Swipe a coin left and tap the star to add it.',
       );
     }
     return ListView(
       children: [
-        const CoinTableHeader(),
-        for (final coin in coins) CoinCard(coin: coin),
+        const CoinTableHeader(showRank: false),
+        for (final coin in coins)
+          CoinCard(key: ValueKey(coin.id), coin: coin, showStar: true),
       ],
     );
   }

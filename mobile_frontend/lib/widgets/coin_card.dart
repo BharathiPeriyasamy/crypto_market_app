@@ -1,34 +1,192 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../core/theme/app_theme.dart';
 import '../core/utils/format.dart';
 import '../models/coin_model.dart';
+import '../providers/crypto_provider.dart';
 import '../screens/coin_details/coin_details_screen.dart';
 import 'skeleton.dart';
 
-// One table row: rank, coin, price, 24h change and market cap
-class CoinCard extends StatelessWidget {
+// One table row: rank, coin, price, 24h change and market cap.
+// Swipe right-to-left to reveal a star; tap the star to add or remove the
+// coin from the watchlist.
+class CoinCard extends StatefulWidget {
   final Coin coin;
-  const CoinCard({super.key, required this.coin});
+
+  // Shows a filled star instead of the rank; tapping it removes the coin
+  final bool showStar;
+
+  const CoinCard({super.key, required this.coin, this.showStar = false});
+
+  @override
+  State<CoinCard> createState() => _CoinCardState();
+}
+
+class _CoinCardState extends State<CoinCard>
+    with SingleTickerProviderStateMixin {
+  static const _actionWidth = 72.0;
+
+  // Only one row stays open at a time; opening another closes this one
+  static final _openRow = ValueNotifier<_CoinCardState?>(null);
+
+  // 0 = closed, 1 = star fully revealed
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 200),
+  );
+
+  Coin get coin => widget.coin;
+
+  @override
+  void initState() {
+    super.initState();
+    _openRow.addListener(_onOpenRowChanged);
+  }
+
+  @override
+  void dispose() {
+    _openRow.removeListener(_onOpenRowChanged);
+    if (_openRow.value == this) _openRow.value = null;
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onOpenRowChanged() {
+    if (_openRow.value != this && _controller.value > 0) {
+      _controller.animateTo(0);
+    }
+  }
+
+  void _open() {
+    _controller.animateTo(1);
+    _openRow.value = this;
+  }
+
+  void _close() {
+    _controller.animateTo(0);
+    if (_openRow.value == this) _openRow.value = null;
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    _openRow.value = this;
+    _controller.value -= (details.primaryDelta ?? 0) / _actionWidth;
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity < -300 || (velocity <= 300 && _controller.value > 0.5)) {
+      _open();
+    } else {
+      _close();
+    }
+  }
+
+  void _toggleWatchlist() {
+    final crypto = context.read<CryptoProvider>();
+    final added = !crypto.isInWatchlist(coin.id);
+    crypto.toggleWatchlist(coin.id);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text(
+            added
+                ? '${coin.name} added to watchlist'
+                : '${coin.name} removed from watchlist',
+          ),
+        ),
+      );
+    _close();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isFavorite = context.select<CryptoProvider, bool>(
+      (crypto) => crypto.isInWatchlist(coin.id),
+    );
+    final row = GestureDetector(
+      onHorizontalDragUpdate: _onDragUpdate,
+      onHorizontalDragEnd: _onDragEnd,
+      child: _buildRow(context),
+    );
+
+    return AnimatedBuilder(
+      animation: _controller,
+      child: row,
+      builder: (context, row) {
+        final revealed = _actionWidth * _controller.value;
+        return Stack(
+          children: [
+            // The star strip only covers the revealed part, so the
+            // see-through row never shows it while closed
+            Positioned(
+              top: 0,
+              bottom: 0,
+              right: 0,
+              width: revealed,
+              child: ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.centerLeft,
+                  minWidth: _actionWidth,
+                  maxWidth: _actionWidth,
+                  child: ColoredBox(
+                    color: deepGreen,
+                    child: IconButton(
+                      tooltip: isFavorite
+                          ? 'Remove from watchlist'
+                          : 'Add to watchlist',
+                      onPressed: _toggleWatchlist,
+                      icon: Icon(
+                        isFavorite ? Icons.star : Icons.star_border,
+                        color: isFavorite ? neonGreen : offWhite,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Transform.translate(offset: Offset(-revealed, 0), child: row),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildRow(BuildContext context) {
     return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => CoinDetailsScreen(coin: coin)),
-      ),
+      // Tapping an open row just closes it
+      onTap: () => _controller.value > 0
+          ? _close()
+          : Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => CoinDetailsScreen(coin: coin)),
+            ),
       child: DecoratedBox(
         decoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: borderColor)),
         ),
         child: _CoinRowLayout(
-          rank: _cell(
-            '${coin.rank}',
-            color: Colors.grey,
-            size: 14,
-            align: TextAlign.left,
-          ),
+          rank: widget.showStar
+              ? IconButton(
+                  tooltip: 'Remove from watchlist',
+                  onPressed: _toggleWatchlist,
+                  icon: const Icon(Icons.star, color: neonGreen, size: 22),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  alignment: Alignment.centerLeft,
+                  style: IconButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                )
+              : _cell(
+                  '${coin.rank}',
+                  color: Colors.grey,
+                  size: 14,
+                  align: TextAlign.left,
+                ),
           coin: Row(
             children: [
               CoinLogo(coin: coin),
@@ -56,12 +214,19 @@ class CoinCard extends StatelessWidget {
 }
 
 class CoinTableHeader extends StatelessWidget {
-  const CoinTableHeader({super.key});
+  const CoinTableHeader({super.key, this.showRank = true});
+
+  final bool showRank;
 
   @override
   Widget build(BuildContext context) {
     return _CoinRowLayout(
-      rank: _cell('#', color: Colors.grey, size: 12, align: TextAlign.left),
+      rank: _cell(
+        showRank ? '#' : '',
+        color: Colors.grey,
+        size: 12,
+        align: TextAlign.left,
+      ),
       coin: const Text('Coin', style: TextStyle(color: Colors.grey, fontSize: 12)),
       price: _cell('Price', color: Colors.grey, size: 12),
       change: _cell('24H', color: Colors.grey, size: 12),

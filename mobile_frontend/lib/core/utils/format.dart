@@ -4,12 +4,20 @@ String formatPrice(double value) {
 }
 
 // Shortens large numbers: 1250000 -> 1.25M
-String formatCompact(double value) {
+String formatCompact(double value, {int decimals = 2}) {
   const units = [(1e12, 'T'), (1e9, 'B'), (1e6, 'M'), (1e3, 'K')];
   for (final (size, suffix) in units) {
-    if (value >= size) return '${(value / size).toStringAsFixed(2)}$suffix';
+    if (value >= size) {
+      return '${(value / size).toStringAsFixed(decimals)}$suffix';
+    }
   }
-  return value.toStringAsFixed(2);
+  return value.toStringAsFixed(decimals);
+}
+
+// Short labels for chart axes: 68500 -> 68.5K, 0.4512 -> 0.4512
+String formatAxisPrice(double value) {
+  if (value >= 1000) return formatCompact(value, decimals: 1);
+  return value.toStringAsFixed(value >= 1 ? 2 : 4);
 }
 
 String formatMoney(double value) => '\$${formatCompact(value)}';
