@@ -24,23 +24,37 @@ class CoinDetailsScreen extends StatefulWidget {
 }
 
 class _CoinDetailsScreenState extends State<CoinDetailsScreen> {
-  // ALL is five years of sample data until the backend supports full history
+  // 0 = ALL, the coin's full history
   static const _ranges = {
     '1D': 1,
     '1W': 7,
     '1M': 30,
     '3M': 90,
     '1Y': 365,
-    'ALL': 1825,
+    'ALL': 0,
   };
 
   int _days = 1;
   late Future<List<ChartPoint>> _chart;
 
+  // The list data has no description; swap in the full details once loaded
+  late Coin _coin = widget.coin;
+
   @override
   void initState() {
     super.initState();
     _chart = _loadChart();
+    _loadDetail();
+  }
+
+  Future<void> _loadDetail() async {
+    try {
+      final detail =
+          await context.read<CryptoProvider>().loadCoinDetail(widget.coin.id);
+      if (mounted) setState(() => _coin = detail);
+    } catch (_) {
+      // Keep showing the list data; only the description is missing
+    }
   }
 
   Future<List<ChartPoint>> _loadChart() =>
@@ -62,7 +76,11 @@ class _CoinDetailsScreenState extends State<CoinDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final coin = widget.coin;
+    // Prices come live from the provider; the description from the detail fetch
+    final coin = context.select<CryptoProvider, Coin?>(
+          (crypto) => crypto.coinById(widget.coin.id),
+        ) ??
+        _coin;
 
     return Scaffold(
       body: SafeArea(
@@ -84,7 +102,7 @@ class _CoinDetailsScreenState extends State<CoinDetailsScreen> {
             const SizedBox(height: 20),
             _StatsGrid(coin: coin),
             const SizedBox(height: 4),
-            _AboutBanner(coin: coin),
+            _AboutBanner(coin: coin, description: _coin.description),
           ],
         ),
       ),
@@ -175,7 +193,7 @@ class _CoinDetailsScreenState extends State<CoinDetailsScreen> {
             ),
           );
         }
-        return PriceChart(points: points, days: _days);
+        return PriceChart(points: points);
       },
     );
   }
@@ -460,9 +478,10 @@ class _StatsGrid extends StatelessWidget {
 }
 
 class _AboutBanner extends StatelessWidget {
-  const _AboutBanner({required this.coin});
+  const _AboutBanner({required this.coin, required this.description});
 
   final Coin coin;
+  final String description;
 
   void _showAbout(BuildContext context) {
     showModalBottomSheet<void>(
@@ -480,7 +499,7 @@ class _AboutBanner extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
-              Text(coin.description),
+              Text(description),
             ],
           ),
         ),
@@ -490,7 +509,7 @@ class _AboutBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasDescription = coin.description.isNotEmpty;
+    final hasDescription = description.isNotEmpty;
     return Material(
       color: Colors.transparent,
       child: Ink(
@@ -527,7 +546,7 @@ class _AboutBanner extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         hasDescription
-                            ? coin.description
+                            ? description
                             : 'Rank #${coin.rank} by market cap',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

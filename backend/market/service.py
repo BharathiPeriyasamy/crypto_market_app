@@ -96,6 +96,7 @@ def chart(coin_id, days):
 
     def fallback():
         coin = next((c for c in mock.markets() if c['id'] == coin_id), None)
-        return mock.chart(coin['current_price'], int(days)) if coin else None
+        sample_days = 1825 if days == 'max' else int(days)
+        return mock.chart(coin['current_price'], sample_days) if coin else None
 
     return load(f'chart:{coin_id}:{days}', 120, fetch, fallback)

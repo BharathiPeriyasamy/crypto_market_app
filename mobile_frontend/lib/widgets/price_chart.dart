@@ -10,10 +10,11 @@ import '../models/coin_model.dart';
 // Glowing line chart with a price axis on the right and a tag for the
 // latest price. Touch or drag on the line to see the price and time.
 class PriceChart extends StatelessWidget {
-  const PriceChart({super.key, required this.points, required this.days});
+  const PriceChart({super.key, required this.points});
 
   final List<ChartPoint> points;
-  final int days;
+  // Days the data covers; picks the time-label format
+  int get _spanDays => points.last.time.difference(points.first.time).inDays;
 
   static const height = 240.0;
   static const _bottomReserved = 32.0;
@@ -24,12 +25,12 @@ class PriceChart extends StatelessWidget {
   ];
 
   String _timeLabel(DateTime time) {
-    if (days <= 1) {
+    if (_spanDays <= 1) {
       final hour = time.hour % 12 == 0 ? 12 : time.hour % 12;
       return '$hour${time.hour < 12 ? 'AM' : 'PM'}';
     }
     final month = _months[time.month - 1];
-    if (days <= 90) return '$month ${time.day}';
+    if (_spanDays <= 90) return '$month ${time.day}';
     return "$month '${(time.year % 100).toString().padLeft(2, '0')}";
   }
 

@@ -1,4 +1,6 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
+import 'package:flutter/widgets.dart';
 
 import '../models/coin_model.dart';
 import '../services/crypto_api_service.dart';
@@ -10,13 +12,24 @@ enum SortOption { marketCap, price, change, volume, name }
 enum CoinFilter { all, gainers, losers }
 
 class CryptoProvider extends ChangeNotifier {
-  CryptoProvider(this._service);
+  CryptoProvider(this._service) {
+    // No point polling while the app is in the background
+    _lifecycle = AppLifecycleListener(
+      onResume: startLiveUpdates,
+      onPause: stopLiveUpdates,
+    );
+  }
 
   final CryptoApiService _service;
+  late final AppLifecycleListener _lifecycle;
+  StreamSubscription<(List<Coin>, MarketStats)>? _liveUpdates;
 
   LoadStatus status = LoadStatus.loading;
   List<Coin> coins = [];
   MarketStats? stats;
+
+  // When prices last arrived from the backend
+  DateTime? lastUpdated;
 
   String query = '';
   CoinFilter filter = CoinFilter.all;
@@ -25,6 +38,25 @@ class CryptoProvider extends ChangeNotifier {
 
   final Set<String> _watchlistIds = {};
 
+  // Listens to the polling stream; prices refresh every 30 seconds
+  void startLiveUpdates() {
+    _liveUpdates?.cancel();
+    if (coins.isEmpty) {
+      status = LoadStatus.loading;
+      notifyListeners();
+    }
+    _liveUpdates = _service.watchMarket().listen(
+      _applyUpdate,
+      onError: (Object _) => _markFailed(),
+    );
+  }
+
+  void stopLiveUpdates() {
+    _liveUpdates?.cancel();
+    _liveUpdates = null;
+  }
+
+  // One-off fetch for pull-to-refresh and the retry button
   Future<void> load() async {
     // Keep showing the old list while refreshing
     if (coins.isEmpty) {
@@ -32,13 +64,40 @@ class CryptoProvider extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      coins = await _service.getCoins();
-      stats = await _service.getMarketStats();
-      status = LoadStatus.success;
-    } catch (e) {
-      if (coins.isEmpty) status = LoadStatus.error;
+      _applyUpdate(
+        await (_service.getCoins(), _service.getMarketStats()).wait,
+      );
+    } catch (_) {
+      _markFailed();
     }
+  }
+
+  void _applyUpdate((List<Coin>, MarketStats) update) {
+    coins = update.$1;
+    stats = update.$2;
+    status = LoadStatus.success;
+    lastUpdated = DateTime.now();
     notifyListeners();
+  }
+
+  // A failed refresh keeps the last prices on screen
+  void _markFailed() {
+    if (coins.isEmpty) status = LoadStatus.error;
+    notifyListeners();
+  }
+
+  Coin? coinById(String id) {
+    for (final coin in coins) {
+      if (coin.id == id) return coin;
+    }
+    return null;
+  }
+
+  @override
+  void dispose() {
+    _liveUpdates?.cancel();
+    _lifecycle.dispose();
+    super.dispose();
   }
 
   List<Coin> get visibleCoins {
@@ -88,6 +147,8 @@ class CryptoProvider extends ChangeNotifier {
 
   Future<List<ChartPoint>> loadChart(Coin coin, int days) =>
       _service.getChart(coin, days);
+
+  Future<Coin> loadCoinDetail(String id) => _service.getCoinDetail(id);
 
   List<Coin> _byChange() =>
       [...coins]..sort((a, b) => b.change24h.compareTo(a.change24h));

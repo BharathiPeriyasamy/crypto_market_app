@@ -56,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Image.asset('assets/images/logo.png', width: 160),
             const SizedBox(height: 8),
             Text(
-              'Coinora',
+              'Indiadits Crypto',
               style: Theme.of(context)
                   .textTheme
                   .headlineMedium

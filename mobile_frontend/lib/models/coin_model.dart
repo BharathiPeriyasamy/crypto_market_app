@@ -36,7 +36,33 @@ class Coin {
     required this.allTimeLow,
     required this.description,
   });
+
+  // Backend /coins and /coins/<id> both use CoinGecko field names.
+  // CoinGecko sends null for some numbers on small coins, so default to 0.
+  factory Coin.fromJson(Map<String, dynamic> json) {
+    return Coin(
+      id: json['id'] as String,
+      symbol: json['symbol'] as String,
+      name: json['name'] as String,
+      image: json['image'] as String?,
+      rank: (json['market_cap_rank'] as num?)?.toInt() ?? 0,
+      currentPrice: _toDouble(json['current_price']),
+      marketCap: _toDouble(json['market_cap']),
+      totalVolume: _toDouble(json['total_volume']),
+      high24h: _toDouble(json['high_24h']),
+      low24h: _toDouble(json['low_24h']),
+      change24h: _toDouble(json['price_change_percentage_24h']),
+      circulatingSupply: _toDouble(json['circulating_supply']),
+      totalSupply: (json['total_supply'] as num?)?.toDouble(),
+      maxSupply: (json['max_supply'] as num?)?.toDouble(),
+      allTimeHigh: _toDouble(json['ath']),
+      allTimeLow: _toDouble(json['atl']),
+      description: (json['description'] as String?)?.trim() ?? '',
+    );
+  }
 }
+
+double _toDouble(Object? value) => (value as num?)?.toDouble() ?? 0;
 
 class MarketStats {
   final double totalMarketCap;
@@ -56,6 +82,19 @@ class MarketStats {
     required this.activeCoins,
     required this.markets,
   });
+
+  factory MarketStats.fromJson(Map<String, dynamic> json) {
+    return MarketStats(
+      totalMarketCap: _toDouble(json['total_market_cap_usd']),
+      totalVolume: _toDouble(json['total_volume_usd']),
+      marketCapChange24h:
+          _toDouble(json['market_cap_change_percentage_24h_usd']),
+      btcDominance: _toDouble(json['btc_dominance']),
+      ethDominance: _toDouble(json['eth_dominance']),
+      activeCoins: (json['active_cryptocurrencies'] as num?)?.toInt() ?? 0,
+      markets: (json['markets'] as num?)?.toInt() ?? 0,
+    );
+  }
 }
 
 class ChartPoint {

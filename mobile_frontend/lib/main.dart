@@ -9,7 +9,7 @@ import 'services/crypto_api_service.dart';
 void main() {
   runApp(
     ChangeNotifierProvider(
-      create: (_) => CryptoProvider(CryptoApiService())..load(),
+      create: (_) => CryptoProvider(CryptoApiService())..startLiveUpdates(),
       child: const MainApp(),
     ),
   );
@@ -22,7 +22,7 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Coinora',
+      title: 'Indiadits Crypto',
       theme: appTheme,
       home: const SplashScreen(),
     );

@@ -8,6 +8,7 @@ import '../../models/coin_model.dart';
 import '../../providers/crypto_provider.dart';
 import '../../widgets/app_navigation_bar.dart';
 import '../../widgets/coin_card.dart';
+import '../../widgets/live_badge.dart';
 import '../../widgets/search_bar.dart';
 import '../../widgets/skeleton.dart';
 import '../../widgets/state_message.dart';
@@ -86,13 +87,23 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Image.asset('assets/images/logo.png', height: 44),
           const SizedBox(width: 8),
-          const Text(
-            'Coinora',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+          // Shrinks on narrow phones to make room for the live badge
+          const Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'Indiadits Crypto',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+              ),
+            ),
           ),
         ],
       ),
       actions: [
+        Padding(
+          padding: EdgeInsets.only(right: _tabIndex == 0 ? 8 : 16),
+          child: const LiveBadge(),
+        ),
         if (_tabIndex == 0)
           Padding(
             padding: const EdgeInsets.only(right: 16),

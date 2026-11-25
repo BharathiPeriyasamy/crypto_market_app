@@ -1,10 +1,15 @@
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'dev-only-key-change-me'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+SECRET_KEY = os.environ["SECRET_KEY"]
+
+DEBUG = os.environ.get("DEBUG", "False") == "True"
+
+ALLOWED_HOSTS = os.environ.get(
+    "ALLOWED_HOSTS", "localhost,127.0.0.1"
+).split(",")
 
 INSTALLED_APPS = [
     'corsheaders',
@@ -18,10 +23,12 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 
-# no database needed, data comes from the CoinGecko api
+WSGI_APPLICATION = 'config.wsgi.application'
+
+# No database needed
 DATABASES = {}
 
-# lets the flutter web build call this server
+# Allow Flutter web to access the API
 CORS_ALLOW_ALL_ORIGINS = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

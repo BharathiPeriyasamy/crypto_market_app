@@ -28,6 +28,6 @@ def coin_detail(request, coin_id):
 
 def coin_chart(request, coin_id):
     days = request.GET.get('days')
-    if days not in ('1', '7', '30', '90', '365'):
+    if days not in ('1', '7', '30', '90', '365', 'max'):
         days = '7'
     return reply(service.chart(coin_id, days), 'coin not found')
