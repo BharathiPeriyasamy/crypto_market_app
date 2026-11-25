@@ -6,9 +6,11 @@ import '../../core/utils/format.dart';
 import '../../models/coin_model.dart';
 import '../../providers/crypto_provider.dart';
 import '../../widgets/app_navigation_bar.dart';
+import '../../widgets/app_snack_bar.dart';
 import '../../widgets/coin_card.dart';
 import '../../widgets/price_chart.dart';
 import '../../widgets/skeleton.dart';
+import '../../widgets/stat_card.dart';
 import '../../widgets/state_message.dart';
 import '../home/home_screen.dart';
 
@@ -123,16 +125,22 @@ class _CoinDetailsScreenState extends State<CoinDetailsScreen> {
         _CircleButton(
           tooltip: isFavorite ? 'Remove from watchlist' : 'Add to watchlist',
           icon: isFavorite ? Icons.star : Icons.star_border,
-          color: isFavorite ? neonGreen : null,
-          onPressed: () => crypto.toggleWatchlist(coin.id),
+          color: isFavorite ? starColor : null,
+          onPressed: () {
+            crypto.toggleWatchlist(coin.id);
+            showWatchlistSnackBar(
+              context,
+              coinName: coin.name,
+              added: !isFavorite,
+              onUndo: () => crypto.toggleWatchlist(coin.id),
+            );
+          },
         ),
         const SizedBox(width: 12),
         _CircleButton(
           tooltip: 'Price alerts',
           icon: Icons.notifications_none,
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Price alerts are coming soon')),
-          ),
+          onPressed: () => showComingSoonSnackBar(context, 'Price alerts'),
         ),
       ],
     );
@@ -276,12 +284,12 @@ class _Header extends StatelessWidget {
             decoration: BoxDecoration(
               color: deepGreen,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: emeraldGreen.withValues(alpha: 0.5)),
+              border: Border.all(color: gainColor.withValues(alpha: 0.5)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.show_chart, size: 16, color: neonGreen),
+                const Icon(Icons.show_chart, size: 16, color: gainColor),
                 const SizedBox(width: 6),
                 Text(
                   'Rank #${coin.rank}',
@@ -329,19 +337,7 @@ class _RangeSelector extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24),
-                    gradient: days == selected
-                        ? const LinearGradient(
-                            colors: [emeraldGreen, neonGreen],
-                          )
-                        : null,
-                    boxShadow: days == selected
-                        ? [
-                            BoxShadow(
-                              color: neonGreen.withValues(alpha: 0.35),
-                              blurRadius: 12,
-                            ),
-                          ]
-                        : null,
+                    color: days == selected ? gainColor : null,
                   ),
                   child: Text(
                     label,
@@ -448,114 +444,17 @@ class _StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stats = _stats();
-    return Column(
+    return StatCardGrid(
       children: [
-        for (var i = 0; i < stats.length; i += 2)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(child: _StatCard(stat: stats[i])),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: i + 1 < stats.length
-                        ? _StatCard(stat: stats[i + 1])
-                        : const SizedBox.shrink(),
-                  ),
-                ],
-              ),
-            ),
+        for (final (icon, label, value, subtitle, change) in _stats())
+          StatCard(
+            icon: icon,
+            label: label,
+            value: value,
+            subtitle: subtitle,
+            change: change,
           ),
       ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.stat});
-
-  final _Stat stat;
-
-  @override
-  Widget build(BuildContext context) {
-    final (icon, label, value, subtitle, change) = stat;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: darkGreen.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: deepGreen,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 20, color: neonGreen),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (change != null)
-                  Row(
-                    children: [
-                      Icon(
-                        change >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                        size: 13,
-                        color: changeColor(change),
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        formatPercent(change),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: changeColor(change),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  )
-                else
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -592,64 +491,81 @@ class _AboutBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasDescription = coin.description.isNotEmpty;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor),
-        gradient: const LinearGradient(
-          colors: [darkGreen, deepGreen],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor),
+          gradient: const LinearGradient(
+            colors: [darkGreen, deepGreen],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          CoinLogo(coin: coin, radius: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: InkWell(
+          // Tapping the banner opens the full description
+          onTap: hasDescription ? () => _showAbout(context) : null,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
               children: [
-                Text(
-                  coin.name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                CoinLogo(coin: coin, radius: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        coin.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        hasDescription
+                            ? coin.description
+                            : 'Rank #${coin.rank} by market cap',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  hasDescription
-                      ? coin.description
-                      : 'Rank #${coin.rank} by market cap',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () => showComingSoonSnackBar(context, 'Trading'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: gainColor,
+                    side: const BorderSide(color: gainColor),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: const Size(0, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Trade Now'),
+                      SizedBox(width: 4),
+                      Icon(Icons.arrow_forward, size: 14),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          if (hasDescription) ...[
-            const SizedBox(width: 8),
-            OutlinedButton(
-              onPressed: () => _showAbout(context),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: neonGreen,
-                side: const BorderSide(color: neonGreen),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('About'),
-                  SizedBox(width: 6),
-                  Icon(Icons.arrow_forward, size: 18),
-                ],
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }

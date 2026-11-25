@@ -6,6 +6,7 @@ import '../core/utils/format.dart';
 import '../models/coin_model.dart';
 import '../providers/crypto_provider.dart';
 import '../screens/coin_details/coin_details_screen.dart';
+import 'app_snack_bar.dart';
 import 'skeleton.dart';
 
 // One table row: rank, coin, price, 24h change and market cap.
@@ -14,7 +15,7 @@ import 'skeleton.dart';
 class CoinCard extends StatefulWidget {
   final Coin coin;
 
-  // Shows a filled star instead of the rank; tapping it removes the coin
+  // Shows a filled star at the end of the row; tapping it removes the coin
   final bool showStar;
 
   const CoinCard({super.key, required this.coin, this.showStar = false});
@@ -85,19 +86,15 @@ class _CoinCardState extends State<CoinCard>
   void _toggleWatchlist() {
     final crypto = context.read<CryptoProvider>();
     final added = !crypto.isInWatchlist(coin.id);
-    crypto.toggleWatchlist(coin.id);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 2),
-          content: Text(
-            added
-                ? '${coin.name} added to watchlist'
-                : '${coin.name} removed from watchlist',
-          ),
-        ),
-      );
+    final id = coin.id;
+    crypto.toggleWatchlist(id);
+    showWatchlistSnackBar(
+      context,
+      coinName: coin.name,
+      added: added,
+      // Uses the provider directly: this row may be gone by then
+      onUndo: () => crypto.toggleWatchlist(id),
+    );
     _close();
   }
 
@@ -140,7 +137,7 @@ class _CoinCardState extends State<CoinCard>
                       onPressed: _toggleWatchlist,
                       icon: Icon(
                         isFavorite ? Icons.star : Icons.star_border,
-                        color: isFavorite ? neonGreen : offWhite,
+                        color: isFavorite ? starColor : offWhite,
                         size: 28,
                       ),
                     ),
@@ -169,24 +166,25 @@ class _CoinCardState extends State<CoinCard>
           border: Border(bottom: BorderSide(color: borderColor)),
         ),
         child: _CoinRowLayout(
-          rank: widget.showStar
+          rank: _cell(
+            '${coin.rank}',
+            color: Colors.grey,
+            size: 14,
+            align: TextAlign.left,
+          ),
+          trailing: widget.showStar
               ? IconButton(
                   tooltip: 'Remove from watchlist',
                   onPressed: _toggleWatchlist,
-                  icon: const Icon(Icons.star, color: neonGreen, size: 22),
+                  icon: const Icon(Icons.star, color: starColor, size: 22),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  alignment: Alignment.centerLeft,
+                  alignment: Alignment.centerRight,
                   style: IconButton.styleFrom(
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 )
-              : _cell(
-                  '${coin.rank}',
-                  color: Colors.grey,
-                  size: 14,
-                  align: TextAlign.left,
-                ),
+              : null,
           coin: Row(
             children: [
               CoinLogo(coin: coin),
@@ -214,23 +212,20 @@ class _CoinCardState extends State<CoinCard>
 }
 
 class CoinTableHeader extends StatelessWidget {
-  const CoinTableHeader({super.key, this.showRank = true});
+  const CoinTableHeader({super.key, this.showStarColumn = false});
 
-  final bool showRank;
+  // Leaves room for the star column so the headers line up with the rows
+  final bool showStarColumn;
 
   @override
   Widget build(BuildContext context) {
     return _CoinRowLayout(
-      rank: _cell(
-        showRank ? '#' : '',
-        color: Colors.grey,
-        size: 12,
-        align: TextAlign.left,
-      ),
+      rank: _cell('#', color: Colors.grey, size: 12, align: TextAlign.left),
       coin: const Text('Coin', style: TextStyle(color: Colors.grey, fontSize: 12)),
       price: _cell('Price', color: Colors.grey, size: 12),
       change: _cell('24H', color: Colors.grey, size: 12),
       marketCap: _cell('Market Cap', color: Colors.grey, size: 12),
+      trailing: showStarColumn ? const SizedBox.shrink() : null,
     );
   }
 }
@@ -281,6 +276,7 @@ class _CoinRowLayout extends StatelessWidget {
     required this.price,
     required this.change,
     required this.marketCap,
+    this.trailing,
   });
 
   final Widget rank;
@@ -288,6 +284,9 @@ class _CoinRowLayout extends StatelessWidget {
   final Widget price;
   final Widget change;
   final Widget marketCap;
+
+  // Optional extra column at the end, e.g. the watchlist star
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -300,6 +299,8 @@ class _CoinRowLayout extends StatelessWidget {
           Expanded(flex: 8, child: price),
           Expanded(flex: 7, child: change),
           Expanded(flex: 7, child: marketCap),
+          if (trailing case final trailing?)
+            SizedBox(width: 34, child: trailing),
         ],
       ),
     );

@@ -11,6 +11,9 @@ const borderColor = Color(0xFF22352A);
 const gainColor = Color(0xFF16C784);
 const lossColor = Color(0xFFEA3943);
 
+// Filled watchlist stars
+const starColor = Color(0xFFFFC107);
+
 Color changeColor(double change) => change >= 0 ? gainColor : lossColor;
 
 final appTheme = ThemeData(

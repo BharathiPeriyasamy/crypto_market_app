@@ -20,7 +20,7 @@ class WatchlistScreen extends StatelessWidget {
     }
     return ListView(
       children: [
-        const CoinTableHeader(showRank: false),
+        const CoinTableHeader(showStarColumn: true),
         for (final coin in coins)
           CoinCard(key: ValueKey(coin.id), coin: coin, showStar: true),
       ],
