@@ -7,7 +7,7 @@ class CryptoApiService {
 
   static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.76.250.225:8000/api',
+    defaultValue: 'https://crypto-market-app-h46x.onrender.com/api',
   );
 
   final http.Client _client;
@@ -61,7 +61,8 @@ class CryptoApiService {
   Future<Object?> _get(String path) async {
     final response = await _client
         .get(Uri.parse('$baseUrl$path'))
-        .timeout(const Duration(seconds: 15));
+        // Render's free tier sleeps when idle and can take ~50s to wake up
+        .timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       throw ApiException('GET $path failed with ${response.statusCode}');
     }

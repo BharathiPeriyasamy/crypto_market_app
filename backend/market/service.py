@@ -31,7 +31,7 @@ def load(key, seconds, fetch, fallback):
             cache[key] = {'time': time.time(), 'data': data, 'source': 'live'}
             return data, 'live'
         except Exception as e:
-            print(f'live api failed for {key}: {e}')
+            print(f'live api failed for {key}: {e}', flush=True)
             if hit:
                 return hit['data'], 'stale'
     return fallback(), 'mock'
