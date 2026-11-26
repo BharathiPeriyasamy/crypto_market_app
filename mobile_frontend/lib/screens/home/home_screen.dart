@@ -631,8 +631,6 @@ class _FilterRow extends StatelessWidget {
   }
 }
 
-// Extra filters on top of the Gainers/Losers chips. Changes apply right away;
-// the button at the bottom shows how many coins match.
 class _FilterSheet extends StatelessWidget {
   const _FilterSheet();
 
