@@ -7,6 +7,7 @@ import '../../core/utils/format.dart';
 import '../../models/coin_model.dart';
 import '../../providers/crypto_provider.dart';
 import '../../widgets/app_navigation_bar.dart';
+import '../../widgets/app_tour.dart';
 import '../../widgets/coin_card.dart';
 import '../../widgets/live_badge.dart';
 import '../../widgets/search_bar.dart';
@@ -14,6 +15,45 @@ import '../../widgets/skeleton.dart';
 import '../../widgets/state_message.dart';
 import '../market/market_screen.dart';
 import '../watchlist/watchlist_screen.dart';
+
+// Widgets the first-run app tour points at
+final _tourSearchKey = GlobalKey();
+final _tourLiveKey = GlobalKey();
+final _tourSortKey = GlobalKey();
+final _tourCoinKey = GlobalKey<CoinCardState>();
+
+final _tourSteps = [
+  TourStep(
+    target: _tourLiveKey,
+    title: 'Live prices',
+    text: 'Prices refresh every 30 seconds. The timer shows how long ago the '
+        'last update arrived. It turns grey if updates stop.',
+  ),
+  TourStep(
+    target: _tourSearchKey,
+    title: 'Search',
+    text: 'Find any coin by name or symbol.',
+  ),
+  TourStep(
+    target: _tourSortKey,
+    title: 'Sort the list',
+    text: 'Order coins by market cap, price, 24h change, volume or name.',
+  ),
+  TourStep(
+    target: _tourCoinKey,
+    title: 'Coin details',
+    text: 'Tap any coin to see its price chart and stats. '
+        'Pull down on the list to refresh.',
+  ),
+  TourStep(
+    target: _tourCoinKey,
+    title: 'Swipe to add to Watchlist',
+    text: 'Drag a coin from right to left to reveal the star, then tap it to '
+        'add the coin to your Watchlist.',
+    onShow: () => _tourCoinKey.currentState?.playSwipeHint(),
+    onHide: () => _tourCoinKey.currentState?.stopSwipeHint(),
+  ),
+];
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,6 +67,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isSearching = false;
+  bool _tourChecked = false;
 
   int get _tabIndex => HomeScreen.selectedTab.value;
 
@@ -50,8 +91,22 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_isSearching) context.read<CryptoProvider>().setQuery('');
   }
 
+  // Start the tour once the coin list is on screen, so every target exists
+  void _maybeStartTour(CryptoProvider crypto) {
+    if (_tourChecked || crypto.status != LoadStatus.success || _tabIndex != 0) {
+      return;
+    }
+    _tourChecked = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AppTour.showOnce(context, _tourSteps);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final crypto = context.watch<CryptoProvider>();
+    _maybeStartTour(crypto);
+
     // Back from Market/Watchlist returns to the Coins tab instead of exiting
     return PopScope(
       canPop: _tabIndex == 0,
@@ -69,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Scaffold(
             backgroundColor: Colors.transparent,
             appBar: _buildAppBar(),
-            body: _buildBody(context.watch<CryptoProvider>()),
+            body: _buildBody(crypto),
             bottomNavigationBar: _buildNavigationBar(),
           ),
         ],
@@ -93,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
               fit: BoxFit.scaleDown,
               child: Text(
                 'Indiadits Crypto',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -102,12 +157,13 @@ class _HomeScreenState extends State<HomeScreen> {
       actions: [
         Padding(
           padding: EdgeInsets.only(right: _tabIndex == 0 ? 8 : 16),
-          child: const LiveBadge(),
+          child: LiveBadge(key: _tourLiveKey),
         ),
         if (_tabIndex == 0)
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: IconButton(
+              key: _tourSearchKey,
               tooltip: _isSearching ? 'Close search' : 'Search',
               icon: Icon(_isSearching ? Icons.close : Icons.search),
               style: IconButton.styleFrom(
@@ -199,7 +255,10 @@ class _CoinList extends StatelessWidget {
                   onRefresh: crypto.load,
                   child: ListView.builder(
                     itemCount: coins.length,
-                    itemBuilder: (_, index) => CoinCard(coin: coins[index]),
+                    itemBuilder: (_, index) => CoinCard(
+                      key: index == 0 ? _tourCoinKey : null,
+                      coin: coins[index],
+                    ),
                   ),
                 ),
         ),
@@ -540,32 +599,140 @@ class _FilterRow extends StatelessWidget {
             ),
           ),
           IconButton(
+            key: _tourSortKey,
             tooltip: 'Sort by',
-            icon: const Icon(Icons.sort, size: 22),
+            icon: const Icon(Icons.swap_vert, size: 22),
             style: _buttonStyle(emeraldGreen),
             onPressed: () => _showSortSheet(context),
           ),
           const SizedBox(width: 8),
-          PopupMenuButton<CoinFilter>(
-            tooltip: 'Filter',
-            icon: const Icon(Icons.tune, size: 22),
-            style: _buttonStyle(borderColor),
-            onSelected: crypto.setFilter,
-            itemBuilder: (_) => [
-              for (final entry in _filters.entries)
-                PopupMenuItem(
-                  value: entry.key,
-                  child: Row(
-                    children: [
-                      Expanded(child: Text(entry.value.$1)),
-                      if (entry.key == crypto.filter)
-                        const Icon(Icons.check, size: 16),
-                    ],
-                  ),
+          Badge(
+            isLabelVisible: crypto.activeFilterCount > 0,
+            label: Text('${crypto.activeFilterCount}'),
+            backgroundColor: neonGreen,
+            textColor: Colors.black,
+            child: IconButton(
+              tooltip: 'Filters',
+              icon: const Icon(Icons.tune, size: 22),
+              style: _buttonStyle(
+                crypto.activeFilterCount > 0 ? emeraldGreen : borderColor,
+              ),
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                showDragHandle: true,
+                isScrollControlled: true,
+                builder: (_) => const _FilterSheet(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Extra filters on top of the Gainers/Losers chips. Changes apply right away;
+// the button at the bottom shows how many coins match.
+class _FilterSheet extends StatelessWidget {
+  const _FilterSheet();
+
+  static const _priceRanges = {
+    PriceRange.any: 'Any',
+    PriceRange.under1: 'Under \$1',
+    PriceRange.from1to100: '\$1 – \$100',
+    PriceRange.over100: 'Over \$100',
+  };
+
+  static const _capSizes = {
+    CapSize.any: 'Any',
+    CapSize.large: 'Large (\$10B+)',
+    CapSize.mid: 'Mid (\$1B–\$10B)',
+    CapSize.small: 'Small (<\$1B)',
+  };
+
+  Widget _section<T>(
+    String title,
+    Map<T, String> options,
+    T selected,
+    ValueChanged<T> onSelected,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 13, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final MapEntry(key: value, value: label) in options.entries)
+                ChoiceChip(
+                  label: Text(label),
+                  labelStyle: const TextStyle(color: offWhite),
+                  selected: value == selected,
+                  onSelected: (_) => onSelected(value),
                 ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final crypto = context.watch<CryptoProvider>();
+    final count = crypto.visibleCoins.length;
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('Filters', style: Theme.of(context).textTheme.titleMedium),
+                const Spacer(),
+                if (crypto.activeFilterCount > 0)
+                  TextButton(
+                    onPressed: crypto.resetFilters,
+                    child: const Text('Reset'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _section('Price', _priceRanges, crypto.priceRange, crypto.setPriceRange),
+            _section('Market cap', _capSizes, crypto.capSize, crypto.setCapSize),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Watchlist coins only'),
+              subtitle: const Text(
+                'Show only coins you have starred',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              value: crypto.watchlistOnly,
+              onChanged: crypto.setWatchlistOnly,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  crypto.activeFilterCount == 0
+                      ? 'Show all coins ($count)'
+                      : 'Show coins ($count)',
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

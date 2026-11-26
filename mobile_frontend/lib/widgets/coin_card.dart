@@ -21,15 +21,45 @@ class CoinCard extends StatefulWidget {
   const CoinCard({super.key, required this.coin, this.showStar = false});
 
   @override
-  State<CoinCard> createState() => _CoinCardState();
+  State<CoinCard> createState() => CoinCardState();
 }
 
-class _CoinCardState extends State<CoinCard>
+class CoinCardState extends State<CoinCard>
     with SingleTickerProviderStateMixin {
   static const _actionWidth = 72.0;
 
   // Only one row stays open at a time; opening another closes this one
-  static final _openRow = ValueNotifier<_CoinCardState?>(null);
+  static final _openRow = ValueNotifier<CoinCardState?>(null);
+
+  bool _hinting = false;
+
+  // App tour demo: slides the row open to show the star, then closed, on repeat
+  Future<void> playSwipeHint() async {
+    if (_hinting) return;
+    _hinting = true;
+    try {
+      while (_hinting && mounted) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        if (!_hinting || !mounted) break;
+        await _controller
+            .animateTo(1, duration: const Duration(milliseconds: 600), curve: Curves.easeOut)
+            .orCancel;
+        await Future<void>.delayed(const Duration(milliseconds: 1200));
+        if (!_hinting || !mounted) break;
+        await _controller
+            .animateTo(0, duration: const Duration(milliseconds: 400), curve: Curves.easeIn)
+            .orCancel;
+      }
+    } on TickerCanceled {
+      // Stopped mid-animation
+    }
+  }
+
+  void stopSwipeHint() {
+    if (!_hinting) return;
+    _hinting = false;
+    if (mounted) _close();
+  }
 
   // 0 = closed, 1 = star fully revealed
   late final _controller = AnimationController(
@@ -47,6 +77,7 @@ class _CoinCardState extends State<CoinCard>
 
   @override
   void dispose() {
+    _hinting = false;
     _openRow.removeListener(_onOpenRowChanged);
     if (_openRow.value == this) _openRow.value = null;
     _controller.dispose();

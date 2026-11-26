@@ -11,6 +11,11 @@ enum SortOption { marketCap, price, change, volume, name }
 
 enum CoinFilter { all, gainers, losers }
 
+enum PriceRange { any, under1, from1to100, over100 }
+
+// Large: $10B+, mid: $1B-$10B, small: under $1B
+enum CapSize { any, large, mid, small }
+
 class CryptoProvider extends ChangeNotifier {
   CryptoProvider(this._service) {
     // No point polling while the app is in the background
@@ -33,6 +38,9 @@ class CryptoProvider extends ChangeNotifier {
 
   String query = '';
   CoinFilter filter = CoinFilter.all;
+  PriceRange priceRange = PriceRange.any;
+  CapSize capSize = CapSize.any;
+  bool watchlistOnly = false;
   SortOption sortBy = SortOption.marketCap;
   bool ascending = false;
 
@@ -108,8 +116,28 @@ class CryptoProvider extends ChangeNotifier {
       final matchesFilter = switch (filter) {
         CoinFilter.all => true,
         CoinFilter.gainers => coin.change24h > 0,
-        CoinFilter.losers => coin.change24h < 0,      };
-      return matchesSearch && matchesFilter;
+        CoinFilter.losers => coin.change24h < 0,
+      };
+      final price = coin.currentPrice;
+      final matchesPrice = switch (priceRange) {
+        PriceRange.any => true,
+        PriceRange.under1 => price < 1,
+        PriceRange.from1to100 => price >= 1 && price <= 100,
+        PriceRange.over100 => price > 100,
+      };
+      final cap = coin.marketCap;
+      final matchesCap = switch (capSize) {
+        CapSize.any => true,
+        CapSize.large => cap >= 10e9,
+        CapSize.mid => cap >= 1e9 && cap < 10e9,
+        CapSize.small => cap < 1e9,
+      };
+      final matchesWatchlist = !watchlistOnly || _watchlistIds.contains(coin.id);
+      return matchesSearch &&
+          matchesFilter &&
+          matchesPrice &&
+          matchesCap &&
+          matchesWatchlist;
     }).toList();
     result.sort((a, b) => ascending ? _compare(a, b) : _compare(b, a));
     return result;
@@ -136,6 +164,34 @@ class CryptoProvider extends ChangeNotifier {
 
   void setFilter(CoinFilter value) {
     filter = value;
+    notifyListeners();
+  }
+
+  void setPriceRange(PriceRange value) {
+    priceRange = value;
+    notifyListeners();
+  }
+
+  void setCapSize(CapSize value) {
+    capSize = value;
+    notifyListeners();
+  }
+
+  void setWatchlistOnly(bool value) {
+    watchlistOnly = value;
+    notifyListeners();
+  }
+
+  // Filters from the Filters sheet (the Gainers/Losers chips are separate)
+  int get activeFilterCount =>
+      (priceRange != PriceRange.any ? 1 : 0) +
+      (capSize != CapSize.any ? 1 : 0) +
+      (watchlistOnly ? 1 : 0);
+
+  void resetFilters() {
+    priceRange = PriceRange.any;
+    capSize = CapSize.any;
+    watchlistOnly = false;
     notifyListeners();
   }
 

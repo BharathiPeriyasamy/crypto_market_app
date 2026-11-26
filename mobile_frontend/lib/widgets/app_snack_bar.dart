@@ -4,6 +4,12 @@ import '../core/theme/app_theme.dart';
 
 // Floating card-style message used across the app instead of the plain
 // SnackBar: an icon badge, a title, a short message and an optional action.
+// Light card on purpose, so it stands out against the dark green screens.
+const _toastBackground = offWhite;
+const _toastTitle = Color(0xFF0B0F0C);
+const _toastMessage = Color(0xFF4A554D);
+const _toastAction = Color(0xFF0A7A3D);
+
 void showAppSnackBar(
   BuildContext context, {
   required IconData icon,
@@ -27,12 +33,12 @@ void showAppSnackBar(
         content: Container(
           padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
           decoration: BoxDecoration(
-            color: darkGreen,
+            color: _toastBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: accent.withValues(alpha: 0.4)),
+            border: Border.all(color: accent, width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.5),
+                color: Colors.black.withValues(alpha: 0.6),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -44,10 +50,10 @@ void showAppSnackBar(
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.15),
+                  color: accent,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 20, color: accent),
+                child: Icon(icon, size: 20, color: Colors.black),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -58,7 +64,7 @@ void showAppSnackBar(
                     Text(
                       title,
                       style: const TextStyle(
-                        color: offWhite,
+                        color: _toastTitle,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -70,7 +76,7 @@ void showAppSnackBar(
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Colors.grey,
+                          color: _toastMessage,
                           fontSize: 12,
                         ),
                       ),
@@ -85,8 +91,8 @@ void showAppSnackBar(
                     onAction();
                   },
                   style: TextButton.styleFrom(
-                    foregroundColor: gainColor,
-                    textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                    foregroundColor: _toastAction,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   child: Text(actionLabel),
                 ),

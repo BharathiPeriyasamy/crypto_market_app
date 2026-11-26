@@ -7,7 +7,6 @@ const deepGreen = Color(0xFF002B08);
 const darkGreen = Color(0xFF142018);
 const offWhite = Color(0xFFF2F5F2);
 const borderColor = Color(0xFF22352A);
-
 const gainColor = Color(0xFF16C784);
 const lossColor = Color(0xFFEA3943);
 

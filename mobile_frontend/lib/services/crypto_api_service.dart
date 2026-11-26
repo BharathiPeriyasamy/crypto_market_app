@@ -22,9 +22,6 @@ class CryptoApiService {
     return MarketStats.fromJson(data);
   }
 
-  // Coins and global stats together, fetched right away and then again
-  // every [interval]. A failed fetch is sent as an error event and polling
-  // carries on, so one bad request doesn't end live updates.
   Stream<(List<Coin>, MarketStats)> watchMarket({
     Duration interval = const Duration(seconds: 30),
   }) async* {
