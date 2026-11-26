@@ -10,7 +10,10 @@ API = 'https://api.coingecko.com/api/v3'
 KEY = os.environ.get('COINGECKO_API_KEY')
 FORCE_MOCK = os.environ.get('MOCK') == '1'
 
+RETRY_AFTER = 60  # seconds to wait after a failed live call
+
 cache = {}
+failed_at = {}
 
 
 def call_api(path):
@@ -25,15 +28,20 @@ def load(key, seconds, fetch, fallback):
     hit = cache.get(key)
     if hit and time.time() - hit['time'] < seconds:
         return hit['data'], hit['source']
-    if not FORCE_MOCK:
+    # after a failure, wait before calling the live api again so we
+    # don't keep hammering it while it is rate limiting or blocking us
+    cooling = time.time() - failed_at.get(key, 0) < RETRY_AFTER
+    if not FORCE_MOCK and not cooling:
         try:
             data = fetch()
             cache[key] = {'time': time.time(), 'data': data, 'source': 'live'}
+            failed_at.pop(key, None)
             return data, 'live'
         except Exception as e:
+            failed_at[key] = time.time()
             print(f'live api failed for {key}: {e}', flush=True)
-            if hit:
-                return hit['data'], 'stale'
+    if hit:
+        return hit['data'], 'stale'
     return fallback(), 'mock'
 
 
