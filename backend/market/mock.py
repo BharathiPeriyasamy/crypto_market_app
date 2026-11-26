@@ -24,6 +24,29 @@ COINS = [
     ('monero', 'xmr', 'Monero', 160, 18.4e6, None, 0.2),
 ]
 
+# CoinGecko logo urls, so the app still shows icons when serving mock data
+IMG = 'https://coin-images.coingecko.com/coins/images/'
+IMAGES = {
+    'bitcoin': IMG + '1/large/bitcoin.png',
+    'ethereum': IMG + '279/large/ethereum.png',
+    'tether': IMG + '325/large/Tether.png',
+    'binancecoin': IMG + '825/large/bnb-icon2_2x.png',
+    'solana': IMG + '4128/large/solana.png',
+    'ripple': IMG + '44/large/xrp-symbol-white-128.png',
+    'usd-coin': IMG + '6319/large/USDC.png',
+    'cardano': IMG + '975/large/cardano.png',
+    'dogecoin': IMG + '5/large/dogecoin.png',
+    'avalanche-2': IMG + '12559/large/Avalanche_Circle_RedWhite_Trans.png',
+    'tron': IMG + '1094/large/photo_2026-04-13_09-59-16.png',
+    'polkadot': IMG + '12171/large/polkadot.jpg',
+    'chainlink': IMG + '877/large/Chainlink_Logo_500.png',
+    'litecoin': IMG + '2/large/litecoin.png',
+    'near': IMG + '10365/large/near.jpg',
+    'uniswap': IMG + '12504/large/uniswap-logo.png',
+    'stellar': IMG + '100/large/fmpFRHHQ_400x400.jpg',
+    'monero': IMG + '69/large/monero_logo.png',
+}
+
 
 def chart(price, days):
     count = 96 if days <= 1 else min(days * 24, 300)
@@ -46,7 +69,7 @@ def markets():
             'id': coin_id,
             'symbol': symbol,
             'name': name,
-            'image': None,
+            'image': IMAGES.get(coin_id),
             'current_price': price,
             'market_cap': cap,
             'market_cap_rank': i + 1,
